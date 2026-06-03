@@ -522,15 +522,19 @@ function renderDraw(s) {
   const unassigned = s.teams.filter(t => t.participant === null || t.participant === undefined).length;
   return `
   <div class="draw-toolbar">
-    <button class="btn btn-primary btn-sm" onclick="doRandomDraw()">🎲 Random Draw All</button>
+    <button class="btn btn-primary btn-sm" onclick="doRandomDraw()">🎲 Random Draw</button>
+    <button class="btn btn-ghost btn-sm" onclick="doSeededDraw()">🎯 Seeded Draw</button>
     ${unassigned > 0 ? `<button class="btn btn-ghost btn-sm" onclick="doRandomDrawUnassigned()">Random Unassigned (${unassigned})</button>` : ''}
     <button class="btn btn-ghost btn-sm" onclick="clearAllAssignments()">Clear All</button>
   </div>
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:11px 14px;margin-bottom:12px;font-size:12px;color:var(--text-muted)">
+    💡 <strong style="color:var(--text)">Seeded Draw</strong> distributes teams so each participant receives an even spread of seeded teams. Assign seed numbers (1 = best) in the table below, then click Seeded Draw.
+  </div>
   ${unassigned > 0
-    ? `<div class="alert alert-warn">⚠ ${unassigned} team${unassigned!==1?'s':''} unassigned. Use the random draw or assign manually below.</div>`
+    ? `<div class="alert alert-warn">⚠ ${unassigned} team${unassigned!==1?'s':''} unassigned. Use a draw option above or assign manually below.</div>`
     : `<div class="alert alert-info">✓ All teams have been assigned to participants.</div>`}
   <table class="data-table">
-    <thead><tr><th>#</th><th>Team</th><th>Participant</th><th>Status</th><th></th></tr></thead>
+    <thead><tr><th>#</th><th>Team</th><th style="width:80px;text-align:center">Seed</th><th>Participant</th><th>Status</th><th></th></tr></thead>
     <tbody>
     ${s.teams.map((t,i) => {
       const pIdx = t.participant;
@@ -539,6 +543,14 @@ function renderDraw(s) {
       return `<tr>
         <td style="color:var(--text-muted);font-family:'DM Mono',monospace;font-size:12px">${String(i+1).padStart(2,'0')}</td>
         <td style="font-weight:500">${esc(t.name)}</td>
+        <td style="text-align:center">
+          <input type="number" min="1" max="999" placeholder="—"
+            value="${t.seed != null ? t.seed : ''}"
+            oninput="setTeamSeed(${i}, this.value)"
+            style="width:54px;padding:4px 6px;font-size:13px;font-family:'DM Mono',monospace;text-align:center;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);color:var(--gold);outline:none"
+            onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--border)'"
+            title="Seed ranking — 1 is the top seed" />
+        </td>
         <td>${p ? `<div class="participant-badge">
             <div class="avatar" style="background:${colorFor(pIdx)};color:#0f0e0c">${initials(p.name)}</div>
             ${esc(p.name)}
@@ -1021,6 +1033,74 @@ function clearAllAssignments() {
   const s = getActive();
   if (!s || !confirm('Clear all team assignments?')) return;
   s.teams.forEach(t => { t.participant = null; t.status = 'pending'; });
+  save(); renderMain();
+}
+
+function setTeamSeed(teamIdx, value) {
+  const s = getActive();
+  if (!s) return;
+  const parsed = parseInt(value);
+  s.teams[teamIdx].seed = isNaN(parsed) || value === '' ? null : parsed;
+  save();
+}
+
+function doSeededDraw() {
+  const s = getActive();
+  if (!s || !s.teams.length || !s.participants.length) return;
+
+  const seeded   = s.teams.map((t,i) => ({...t, idx:i})).filter(t => t.seed != null).sort((a,b) => a.seed - b.seed);
+  const unseeded = s.teams.map((t,i) => ({...t, idx:i})).filter(t => t.seed == null);
+
+  if (!seeded.length) {
+    alert('No seeds set. Add seed numbers in the Seed column first, then run Seeded Draw.\n\nUsing Random Draw instead.');
+    doRandomDraw();
+    return;
+  }
+
+  const n = s.participants.length;
+
+  // Shuffle participant order so the draw feels random
+  const participantOrder = Array.from({length: n}, (_,i) => i);
+  for (let i = participantOrder.length-1; i>0; i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [participantOrder[i], participantOrder[j]] = [participantOrder[j], participantOrder[i]];
+  }
+
+  // Split seeded teams into tiers of n, distribute each tier so every
+  // participant gets one team from each tier (snake draft within tier)
+  const assignments = {};
+  let tierStart = 0;
+  while (tierStart < seeded.length) {
+    const tier = seeded.slice(tierStart, tierStart + n);
+    // Shuffle within the tier for randomness
+    for (let i = tier.length-1; i>0; i--) {
+      const j = Math.floor(Math.random()*(i+1));
+      [tier[i], tier[j]] = [tier[j], tier[i]];
+    }
+    tier.forEach((team, pos) => {
+      assignments[team.idx] = participantOrder[pos % n];
+    });
+    tierStart += n;
+  }
+
+  // Distribute unseeded teams evenly at random
+  const shuffledUnseeded = [...unseeded].sort(() => Math.random() - 0.5);
+  const counts = Array(n).fill(0);
+  Object.values(assignments).forEach(pIdx => counts[pIdx]++);
+  shuffledUnseeded.forEach(team => {
+    const minCount = Math.min(...counts);
+    const candidates = counts.map((c,i)=>i).filter(i => counts[i] === minCount);
+    const chosen = candidates[Math.floor(Math.random()*candidates.length)];
+    assignments[team.idx] = chosen;
+    counts[chosen]++;
+  });
+
+  // Apply
+  s.teams.forEach((t, i) => {
+    t.participant = assignments[i] !== undefined ? assignments[i] : (i % n);
+    t.status = 'active';
+  });
+
   save(); renderMain();
 }
 

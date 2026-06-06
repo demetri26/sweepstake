@@ -194,15 +194,20 @@
   .gd-cell.pos { color: var(--green); }
   .gd-cell.neg { color: var(--red); }
   .group-fixtures { padding: 10px 14px; border-top: 1px solid var(--border); background: var(--surface2); }
-  .fixture-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .fixture-row { display: flex; align-items: center; gap: 6px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
   .fixture-row:last-child { border-bottom: none; }
-  .fixture-team { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .fixture-team.home { text-align: right; }
-  .fixture-score-wrap { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
-  .fixture-score-input { width: 38px; padding: 3px 5px; text-align: center; font-family: 'DM Mono', monospace; font-size: 13px; background: var(--surface); border: 1px solid var(--border); border-radius: 3px; color: var(--text); outline: none; }
-  .fixture-score-input:focus { border-color: var(--gold); }
-  .fixture-sep { color: var(--text-muted); font-size: 11px; }
-  .fixture-confirm { padding: 2px 8px; border-radius: 3px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); font-size: 10px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.15s; white-space: nowrap; }
+  .fixture-team-block { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+  .fixture-team-block-right { flex-direction: row-reverse; }
+  .fixture-team-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+  .fixture-team-block .fixture-team-name { text-align: right; }
+  .fixture-team-block-right .fixture-team-name { text-align: left; }
+  .fx-winner { color: var(--text); font-weight: 600; }
+  .fx-draw { color: var(--text-muted); }
+  .fx-loser { color: var(--text-muted); opacity: 0.55; }
+  .fixture-score-input { width: 40px; padding: 4px 5px; text-align: center; font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 600; background: var(--surface3); border: 1px solid var(--border); border-radius: 3px; color: var(--text); outline: none; flex-shrink: 0; }
+  .fixture-score-input:focus { border-color: var(--gold); background: var(--surface2); }
+  .fixture-sep { color: var(--text-muted); font-size: 13px; font-family: 'DM Mono', monospace; flex-shrink: 0; }
+  .fixture-confirm { padding: 3px 8px; border-radius: 3px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); font-size: 10px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.15s; white-space: nowrap; flex-shrink: 0; }
   .fixture-confirm:hover { border-color: var(--gold); color: var(--gold); }
   .fixture-confirm.saved { border-color: rgba(52,211,153,0.4); color: var(--green); background: rgba(52,211,153,0.06); }
   .group-slot-select { width: 100%; background: var(--surface2); border: none; border-bottom: 1px solid var(--border); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 12px; padding: 6px 10px; outline: none; cursor: pointer; }
@@ -1546,18 +1551,23 @@ function renderGroupView(s) {
       const t1 = s.teams[fix.team1];
       const t2 = s.teams[fix.team2];
       const saved = fix.score1 !== null && fix.score2 !== null;
+      const w1 = saved && fix.score1 > fix.score2;
+      const w2 = saved && fix.score2 > fix.score1;
+      const draw = saved && fix.score1 === fix.score2;
       html += `<div class="fixture-row">
-        <span class="fixture-team home">${t1 ? esc(t1.name) : '?'}</span>
-        <div class="fixture-score-wrap">
+        <div class="fixture-team-block">
+          <span class="fixture-team-name ${w1?'fx-winner':draw?'fx-draw':saved?'fx-loser':''}">${t1 ? esc(t1.name) : '?'}</span>
           <input class="fixture-score-input" type="number" min="0" placeholder="0"
             value="${fix.score1 !== null ? fix.score1 : ''}"
             id="fs_${gIdx}_${fIdx}_1" />
-          <span class="fixture-sep">–</span>
+        </div>
+        <span class="fixture-sep">–</span>
+        <div class="fixture-team-block fixture-team-block-right">
           <input class="fixture-score-input" type="number" min="0" placeholder="0"
             value="${fix.score2 !== null ? fix.score2 : ''}"
             id="fs_${gIdx}_${fIdx}_2" />
+          <span class="fixture-team-name ${w2?'fx-winner':draw?'fx-draw':saved?'fx-loser':''}">${t2 ? esc(t2.name) : '?'}</span>
         </div>
-        <span class="fixture-team">${t2 ? esc(t2.name) : '?'}</span>
         <button class="fixture-confirm ${saved?'saved':''}" onclick="saveFixture(${gIdx},${fIdx})">${saved?'✓':'Save'}</button>
       </div>`;
     });

@@ -198,7 +198,9 @@
   .fixture-row:last-child { border-bottom: none; }
   .fixture-team-line { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; padding: 2px 0; }
   .fixture-team-line + .fixture-team-line { border-top: 1px dashed var(--border); margin-top: 4px; padding-top: 6px; }
+  .fx-team-info { display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
   .fx-name { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fx-participant { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 0.85; margin-top: 1px; }
   .fx-score-wrap { display: flex; align-items: center; gap: 6px; }
   .fx-score-label { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); min-width: 28px; text-align: right; }
   .fixture-score-input { width: 44px; padding: 4px 6px; text-align: center; font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 600; background: var(--surface3); border: 1px solid var(--border); border-radius: 3px; color: var(--text); outline: none; }
@@ -1558,9 +1560,16 @@ function renderGroupView(s) {
       const draw = saved && fix.score1 === fix.score2;
       const c1 = w1 ? 'fx-winner' : draw ? 'fx-draw' : saved ? 'fx-loser' : '';
       const c2 = w2 ? 'fx-winner' : draw ? 'fx-draw' : saved ? 'fx-loser' : '';
+      const p1idx = t1?.participant ?? null;
+      const p2idx = t2?.participant ?? null;
+      const p1 = p1idx !== null ? s.participants[p1idx] : null;
+      const p2 = p2idx !== null ? s.participants[p2idx] : null;
       html += `<div class="fixture-row">
         <div class="fixture-team-line ${c1}">
-          <span class="fx-name">${t1 ? esc(t1.name) : '?'}</span>
+          <div class="fx-team-info">
+            <span class="fx-name">${t1 ? esc(t1.name) : '?'}</span>
+            ${p1 ? `<span class="fx-participant" style="color:${colorFor(p1idx)}">${esc(p1.name)}</span>` : ''}
+          </div>
           <div class="fx-score-wrap">
             <span class="fx-score-label">Score</span>
             <input class="fixture-score-input" type="number" min="0" placeholder="—"
@@ -1569,7 +1578,10 @@ function renderGroupView(s) {
           </div>
         </div>
         <div class="fixture-team-line ${c2}">
-          <span class="fx-name">${t2 ? esc(t2.name) : '?'}</span>
+          <div class="fx-team-info">
+            <span class="fx-name">${t2 ? esc(t2.name) : '?'}</span>
+            ${p2 ? `<span class="fx-participant" style="color:${colorFor(p2idx)}">${esc(p2.name)}</span>` : ''}
+          </div>
           <div class="fx-score-wrap">
             <span class="fx-score-label">Score</span>
             <input class="fixture-score-input" type="number" min="0" placeholder="—"
